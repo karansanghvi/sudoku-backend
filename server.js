@@ -14,7 +14,14 @@ app.use(cors({
   origin: function(origin, callback) {
     if (!origin) return callback(null, true);
     
-    if (origin.startsWith('http://localhost:')) {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+      process.env.FRONTEND_URL, 
+    ].filter(Boolean); 
+    
+    if (allowedOrigins.some(allowed => origin === allowed) || origin.startsWith('http://localhost:')) {
       return callback(null, true);
     }
     
@@ -37,9 +44,9 @@ app.use(cookieParser());
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('MongoDB Atlas Connected Successfully');
+    console.log('✅ MongoDB Atlas Connected Successfully');
   } catch (error) {
-    console.error('MongoDB Connection Error:', error.message);
+    console.error('❌ MongoDB Connection Error:', error.message);
     process.exit(1);
   }
 };
@@ -93,13 +100,13 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
-  console.log(`CORS enabled for ALL localhost ports`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📍 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🌐 CORS enabled for: localhost + ${process.env.FRONTEND_URL || 'production frontend'}`);
 });
 
 process.on('SIGINT', async () => {
-  console.log('\nShutting down gracefully...');
+  console.log('\n🛑 Shutting down gracefully...');
   await mongoose.connection.close();
   process.exit(0);
 });
