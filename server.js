@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const path = require('path'); 
 require('dotenv').config();
 const userRoutes = require('./routes/userRoute');
 const gameRoutes = require('./routes/gameRoutes');
@@ -25,7 +26,7 @@ app.use(cors({
       return callback(null, true);
     }
     
-    callback(new Error('Not allowed by CORS'));
+    callback(null, true); 
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -36,17 +37,20 @@ app.use(cors({
 }));
 
 app.use(express.json());
-
 app.use(cookieParser());
 
-// MONGODB CONNECTION
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, 'public')));
+  console.log('Serving static files from /public directory');
+}
 
+// MONGODB CONNECTION
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('✅ MongoDB Atlas Connected Successfully');
+    console.log('MongoDB Atlas Connected Successfully');
   } catch (error) {
-    console.error('❌ MongoDB Connection Error:', error.message);
+    console.error('MongoDB Connection Error:', error.message);
     process.exit(1);
   }
 };
@@ -65,24 +69,21 @@ mongoose.connection.on('disconnected', () => {
   console.log('Mongoose disconnected');
 });
 
-// ROUTES
-
-// User routes
 app.use('/api/user', userRoutes);
-
-// Game routes
 app.use('/api/sudoku', gameRoutes);
-
-// High Score routes
 app.use('/api/highscore', highScoreRoutes);
 
-// Test route
-app.get('/', (req, res) => {
+app.get('/api', (req, res) => {
   res.json({ message: 'Sudoku Backend Server is running!' });
 });
 
-// ERROR HANDLING MIDDLEWARE
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  });
+}
 
+// ERROR HANDLING MIDDLEWARE
 app.use((req, res, next) => {
   res.status(404).json({ error: 'Route not found' });
 });
@@ -96,17 +97,18 @@ app.use((err, req, res, next) => {
 });
 
 // START SERVER
-
 const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📍 Environment: ${process.env.NODE_ENV}`);
-  console.log(`🌐 CORS enabled for: localhost + ${process.env.FRONTEND_URL || 'production frontend'}`);
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV}`);
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`Serving frontend and backend from same domain`);
+  }
 });
 
 process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
+  console.log('Shutting down gracefully...');
   await mongoose.connection.close();
   process.exit(0);
 });
